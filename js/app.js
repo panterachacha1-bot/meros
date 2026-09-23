@@ -9,6 +9,19 @@
   const LANGS = ["uz", "ru", "en"];
   const ROMAN = ["","I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII","XIII","XIV","XV","XVI","XVII","XVIII","XIX","XX","XXI","XXII"];
   const NO_ARCHIVE = new Set(["buxoriy"]);
+  const REGIONS = {
+    herat: ["navoiy"],
+    fergana: ["bobur", "fargoniy", "cholpon", "vohidov", "yusuf", "sarimsoqov", "ibrat"],
+    khorezm: ["xorazmiy", "beruniy", "manguberdi"],
+    bukhara: ["ibnsino", "buxoriy", "fitrat", "ayniy"],
+    samarkand: ["ulugbek", "behbudiy"],
+    shahrisabz: ["temur", "oripov"],
+    kokand: ["muqimiy", "furqat", "qahhor", "hamza"],
+    khujand: ["qoriniyoziy", "abdullayev", "pqodirov"],
+    jizzakh: ["olimjon"],
+    boysun: ["xolmirzayev"]
+  };
+  const regionOf = (id) => Object.keys(REGIONS).find((r) => REGIONS[r].includes(id)) || "tashkent";
 
   /* ---------- Til ---------- */
   const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
@@ -78,14 +91,20 @@
   };
 
   /* ---------- Portret ---------- */
+  // Moslashuvchan rasm: WebP (240/480/720) + JPEG zaxira
+  function pic(p, sizes, big, eager, alt) {
+    const b = `img/w/${p.id}`;
+    const set = big ? `${b}-480.webp 480w, ${b}-720.webp 720w` : `${b}-240.webp 240w, ${b}-480.webp 480w`;
+    return `<picture><source type="image/webp" srcset="${set}" sizes="${sizes}"><img src="${b}-480.webp" alt="${esc(alt || "")}" width="480" height="640" loading="${eager ? "eager" : "lazy"}" decoding="async"${eager ? ' fetchpriority="high"' : ""}></picture>`;
+  }
   function portrait(p, opts) {
     opts = opts || {};
     const cls = "portrait" + (opts.reveal ? " reveal-img" : "");
-    if (p.photo) return `<div class="${cls}"><img src="${esc(p.photo)}" alt="${esc(p.name)}" loading="${opts.eager ? "eager" : "lazy"}"></div>`;
+    if (p.photo) return `<div class="${cls}">${pic(p, opts.big ? "(max-width: 900px) 90vw, 460px" : "(max-width: 460px) 90vw, (max-width: 760px) 45vw, 280px", opts.big, opts.eager, p.name)}</div>`;
     return `<div class="${cls}"><div class="monogram" aria-label="${esc(p.name)}"><b>${esc(initials(p))}</b><span>${esc(years(p))}</span></div></div>`;
   }
   function thumb(p) {
-    if (p.photo) return `<div class="thumb"><img src="${esc(p.photo)}" alt="" loading="lazy"></div>`;
+    if (p.photo) return `<div class="thumb"><picture><source type="image/webp" srcset="img/w/${p.id}-240.webp"><img src="img/w/${p.id}-240.webp" alt="" width="240" height="320" loading="lazy" decoding="async"></picture></div>`;
     return `<div class="thumb"><div class="monogram"><b>${esc(initials(p))}</b></div></div>`;
   }
   function card(p, d) {
@@ -211,7 +230,7 @@
   let phEl;
   function openPhoto(p) {
     if (!phEl) { phEl = document.createElement("div"); phEl.className = "ph-modal"; document.body.appendChild(phEl); phEl.addEventListener("click", (e) => { if (e.target === phEl || e.target.closest("[data-close]")) closePhoto(); }); }
-    phEl.innerHTML = `<figure><img src="img/arxiv/${p.id}.jpg" alt="${esc(p.name)}"><figcaption><span>${t("person.archiveNote")}</span><button type="button" class="link" data-close>${t("person.close")}</button></figcaption></figure>`;
+    phEl.innerHTML = `<figure><img src="img/arxiv/${p.id}.webp" alt="${esc(p.name)}" decoding="async"><figcaption><span>${t("person.archiveNote")}</span><button type="button" class="link" data-close>${t("person.close")}</button></figcaption></figure>`;
     phEl.classList.add("open");
   }
   function closePhoto() { if (phEl) phEl.classList.remove("open"); }
@@ -223,7 +242,7 @@
     const chrono = sortedChrono();
     const withPhoto = chrono.filter((p) => p.photo && p.id !== "buxoriy");
     const feat = withPhoto[doy % withPhoto.length];
-    $("#feature").innerHTML = `<a href="${href(feat)}" style="display:block">${portrait(feat, { eager: true, reveal: true })}</a>
+    $("#feature").innerHTML = `<a href="${href(feat)}" style="display:block">${portrait(feat, { eager: true, reveal: true, big: true })}</a>
       <div class="feature-cap"><span class="label">${t("home.personOfDay")}</span><div><a class="name" href="${href(feat)}">${esc(feat.name)}</a></div><div class="sub">${esc(feat.role)} · <span class="num">${esc(years(feat))}</span></div></div>`;
     $("#fields").innerHTML = Object.keys(FIELDS).map((k) => {
       const list = chrono.filter((p) => p.field === k);
@@ -335,7 +354,7 @@
     $("#crumbs").innerHTML = `<a href="${withLang("shaxslar.html")}">${t("nav.people")}</a><span>/</span><a href="${withLang("shaxslar.html?soha=" + p.field)}">${f.name}</a>${p.jadid ? `<span>/</span><a href="${withLang("shaxslar.html?soha=jadid")}">${t("catalog.jadids")}</a>` : ""}`;
     const archive = p.photo && !NO_ARCHIVE.has(p.id);
     $("#person-head").innerHTML = `
-      <div>${portrait(p, { eager: true, reveal: true })}<div class="photo-cap">${archive ? `<span>${t("person.illus")}</span><button type="button" id="arx">${t("person.archive")}</button>` : (p.photo ? "" : `<span>${t("person.noPhoto")}</span>`)}</div></div>
+      <div>${portrait(p, { eager: true, reveal: true, big: true })}<div class="photo-cap">${archive ? `<span>${t("person.illus")}</span><button type="button" id="arx">${t("person.archive")}</button>` : (p.photo ? "" : `<span>${t("person.noPhoto")}</span>`)}</div></div>
       <div class="load-in">
         <span class="tag" style="${fvar(p.field)}"><i></i>${esc(f.name)} · ${centuryLabel(centuryN(p.born.y))}</span>
         <h1 class="display">${esc(p.name)}</h1>
@@ -348,6 +367,8 @@
         <p class="lede">${esc(p.summary)}</p>
       </div>`;
     if (archive) $("#arx").addEventListener("click", () => openPhoto(p));
+    const main = document.querySelector("main"), rg = `img/region/${regionOf(p.id)}`;
+    if (main && !main.querySelector(".region-bg")) main.insertAdjacentHTML("afterbegin", `<div class="region-bg" aria-hidden="true"><img src="${rg}-1280.webp" srcset="${rg}-720.webp 720w, ${rg}-1280.webp 1280w" sizes="100vw" alt="" decoding="async" onload="this.parentNode.classList.add('on')"></div>`);
     $("#journey").innerHTML = journeyHTML(p);
     $("#top-works").innerHTML = topWorksHTML(p);
     $("#quote-wrap").innerHTML = p.quote ? `<div class="quote rv"><blockquote>«${esc(p.quote.text)}»</blockquote><cite>${esc(p.quote.src)}</cite></div>` : "";
@@ -456,7 +477,7 @@
     fetch(w.text).then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); }).then((txt) => {
       const pages = paginate(parseText(txt), 9000);
       const key = `meros-read-${p.id}-${n}`;
-      let size = +store.get("meros-rsize") || 20;
+      let size = +store.get("meros-rsize") || (innerWidth < 760 ? 18 : 20);
       let pg = Math.min(pages.length - 1, Math.max(0, (+params.get("p") || +store.get(key) || 1) - 1));
       body.innerHTML = `<div class="reader-tools"><div class="grp"><span class="label" id="pgl"></span></div>
           <div class="grp"><span id="txt-tts"></span><button class="btn btn-ghost btn-sm" type="button" id="fsminus" aria-label="${t("reader.size")} −">A−</button><button class="btn btn-ghost btn-sm" type="button" id="fsplus" aria-label="${t("reader.size")} +">A+</button></div></div>
@@ -588,9 +609,10 @@
     el.innerHTML = texts.map(([id, i, w]) => { const p = byId(id); return p ? `<div class="src"><a class="n" href="${asarHref(id, i)}">${esc(L(w.t))}</a><span class="small">${esc(p.name)}</span></div>` : ""; }).join("");
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
+  function boot() {
     renderChrome();
     ({ index: initHome, shaxslar: initCatalog, shaxs: initPerson, asar: initReader, davrlar: initEras, sinov: initQuiz, haqida: initAbout }[document.body.dataset.page] || function () {})();
     observe();
-  });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();
 })();
