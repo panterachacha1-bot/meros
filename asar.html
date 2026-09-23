@@ -28,12 +28,18 @@
     </div>
   </main>
   <footer id="site-footer"></footer>
-  <script src="js/data.js"></script>
-  <script src="js/i18n.js"></script>
-  <script src="js/people-ru.js"></script>
-  <script src="js/people-en.js"></script>
-  <script src="js/works.js"></script>
-  <script src="js/audio.js"></script>
-  <script src="js/app.js"></script>
+  <script>
+  (function () {
+    var l = new URLSearchParams(location.search).get("lang");
+    if (!l) { try { l = localStorage.getItem("meros-lang"); } catch (e) {} }
+    var s = ["js/data.js", "js/i18n.js"];
+    if (l === "ru") s.push("js/people-ru.js");
+    if (l === "en") s.push("js/people-en.js");
+    s.push("js/works.js");
+    if (/(index|asar)\.html$|\/$/.test(location.pathname)) s.push("js/audio.js");
+    s.push("js/app.js");
+    s.forEach(function (src) { var e = document.createElement("script"); e.src = src; e.async = false; document.body.appendChild(e); });
+  })();
+  </script>
 </body>
 </html>
